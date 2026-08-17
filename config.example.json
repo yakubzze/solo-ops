@@ -1,0 +1,15 @@
+{
+  "//": "Copy to config.json. Every key is optional; delete what you do not need.",
+
+  "//dataDir": "Where issues live. Default: ~/solo-ops. Point it at a synced folder to work from two machines.",
+  "dataDir": "~/solo-ops",
+
+  "//notesDir": "Any folder of Markdown: an Obsidian vault, a plain notes directory, an agent-ops store.",
+  "notesDir": "",
+
+  "//notesInbox": "Subfolder holding loose captures. Auto-detected: _Inbox, inbox, Inbox, '00 Inbox'.",
+  "notesInbox": "",
+
+  "//obsidianVault": "Vault name. Set it and linked notes become obsidian:// deep links.",
+  "obsidianVault": ""
+}

@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ['20.x', '22.x']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Render every interface state
+        run: npm run smoke
+
+      # Boots a real server against a throwaway store and reproduces every
+      # data-loss and containment failure this project has had.
+      - name: Integrity regressions
+        run: npm run integrity
+
+      # Undo is the one feature where a passing check can hide a broken feature:
+      # asserting only the end state also passes when nothing happened at all.
+      # This drives a real browser and checks both directions.
+      - name: Install a browser for the undo test
+        run: npx playwright install --with-deps chromium
+
+      - name: Undo in a real browser
+        run: npm run undo
+
+  boot:
+    name: Server boots and serves
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+        with:
+          node-version: '22.x'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # A green type-check says nothing about whether the thing starts, seeds an
+      # empty store, and answers. This is the cheapest test that does.
+      - name: Start against a throwaway store and query it
+        env:
+          SOLO_OPS_DATA_DIR: ${{ runner.temp }}/solo-ops-ci
+        run: |
+          node server/index.mjs --no-open &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4321/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://localhost:4321/api/health | tee health.json
+          curl -sf http://localhost:4321/api/state  | tee state.json
+          node -e "
+            const health = require('./health.json');
+            const state = require('./state.json');
+            if (!health.ok) throw new Error('health is not ok');
+            if (health.conflicts.length) throw new Error('a fresh store reported conflicts');
+            if (!state.workspace.clients.length) throw new Error('seed produced no clients');
+            if (!state.workspace.cycles.length) throw new Error('no cycle was created for today');
+            console.log('boot ok:', state.workspace.clients.length, 'clients,', state.issues.length, 'issues');
+          "
+
+      - name: Verify the store is a folder of readable JSON
+        env:
+          SOLO_OPS_DATA_DIR: ${{ runner.temp }}/solo-ops-ci
+        run: |
+          test -f "$SOLO_OPS_DATA_DIR/workspace.json"
+          test -d "$SOLO_OPS_DATA_DIR/issues"
+          for file in "$SOLO_OPS_DATA_DIR"/issues/*.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$file','utf8'))"
+          done

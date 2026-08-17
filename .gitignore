@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Paths are per-machine. `~/…` works on both, an absolute path does not,
+# and a synced copy of this file would carry one machine's path to another.
+config.json
+
+# Only created when no store location is configured and the default is unusable.
+data/

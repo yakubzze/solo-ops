@@ -1,0 +1,17 @@
+{
+  "name": "solo-ops",
+  "short_name": "solo-ops",
+  "description": "Local-first issue tracker for one person",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0F11",
+  "theme_color": "#0E0F11",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

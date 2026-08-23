@@ -72,6 +72,31 @@ function loadPrefs(): UiPrefs {
 const uid = (prefix: string) =>
   `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 
+/**
+ * Every list an issue carries, defaulted before anything renders.
+ *
+ * The store is a folder of JSON the user is invited to open in a text editor,
+ * and the views read `.length` off these three without a guard — an issue that
+ * lost `noteLinks` to a hand edit does not lose its chip, it blanks the entire
+ * interface with nothing on screen to say why. Defaulted once here rather than
+ * in each view, so a new view cannot forget.
+ *
+ * Only fills what is missing: an issue that is already whole is passed through
+ * unchanged, so this does not churn objects React compares by identity.
+ */
+function withLists(issues: Issue[]): Issue[] {
+  return issues.map((issue) =>
+    issue.noteLinks && issue.labels && issue.checklist
+      ? issue
+      : {
+          ...issue,
+          noteLinks: issue.noteLinks ?? [],
+          labels: issue.labels ?? [],
+          checklist: issue.checklist ?? [],
+        },
+  )
+}
+
 class Store {
   state: State = {
     ...loadPrefs(),
@@ -136,7 +161,7 @@ class Store {
         ready: true,
         error: null,
         workspace: state.workspace,
-        issues: state.issues,
+        issues: withLists(state.issues),
         currentCycleId: state.currentCycleId,
         health,
       })
@@ -168,12 +193,13 @@ class Store {
     try {
       const state = await api.reload()
       // A reload that changed nothing has nothing to report.
+      const issues = withLists(state.issues)
       const before = JSON.stringify([this.state.workspace, this.state.issues])
-      const after = JSON.stringify([state.workspace, state.issues])
+      const after = JSON.stringify([state.workspace, issues])
       this.applyLocale(state.workspace.settings.locale)
       this.set({
         workspace: state.workspace,
-        issues: state.issues,
+        issues,
         currentCycleId: state.currentCycleId,
       })
       if (message && before !== after) this.toast(message, 'info')

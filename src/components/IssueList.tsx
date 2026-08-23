@@ -159,11 +159,16 @@ function Row({
   /* A project name repeated on every row is noise wherever the view already
      carries it. It stays where it actually distinguishes something. */
   const view = useStore((s) => s.view)
-  const projectIsImplied =
-    view.kind === 'client' && (view.projectId === issue.projectId || view.projectId === null)
-  const project = projectIsImplied
-    ? undefined
-    : workspace?.projects.find((p) => p.id === issue.projectId)
+  const project = workspace?.projects.find((p) => p.id === issue.projectId)
+  /* Inside the project itself, both marks are implied — the view is the answer. */
+  const projectImplied = view.kind === 'client' && view.projectId === issue.projectId
+  /* One rung up, on a client with no project chosen, the name is still noise: every
+     row repeats one of two or three. Which project a row belongs to, though, is
+     precisely what this view cannot say — so the colour answers it without words,
+     and a project with no colour stays silent rather than adding a blank mark. */
+  const projectNameImplied = view.kind === 'client' && view.projectId === null
+  const showProjectDot = Boolean(project?.color) && !projectImplied
+  const showProjectName = Boolean(project) && !projectImplied && !projectNameImplied
   const labels = (workspace?.labels ?? []).filter((l) => issue.labels.includes(l.id))
   const due = formatDue(issue.dueDate)
 
@@ -240,7 +245,14 @@ function Row({
             {l.name}
           </span>
         ))}
-        {project && <span className="row-project">{project.name}</span>}
+        {project && (showProjectDot || showProjectName) && (
+          <span className="row-project">
+            {showProjectDot && (
+              <span className="project-dot" style={{ ['--project-color' as string]: project.color }} />
+            )}
+            {showProjectName && <span className="row-project-name">{project.name}</span>}
+          </span>
+        )}
         {due && (
           <span className="row-due" data-overdue={isOverdue(issue.dueDate)} data-today={issue.dueDate === todayISO()}>
             {due}

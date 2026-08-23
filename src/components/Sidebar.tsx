@@ -77,6 +77,11 @@ export function Sidebar() {
             <button
               key={project.id}
               className="side-project"
+              // The client keeps the tint and the dot beside its own name; a project
+              // colours only its own marker, so the two never contend for one slot and
+              // a project is free to take a colour unrelated to its client's.
+              data-colored={project.color !== null}
+              style={project.color ? ({ ['--project-color' as string]: project.color } as object) : undefined}
               aria-current={view.projectId === project.id}
               onClick={() =>
                 store.setView({

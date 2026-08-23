@@ -59,7 +59,10 @@ store.state = {
       client('c_side', 'SIDE', 'Side project', '#6EA8FE', 'own'),
       client('c_client', 'ACME', 'Example client', '#A78BFA', 'client'),
     ],
-    projects: [{ id: 'p1', clientId: 'c_side', name: 'Build', color: null, archived: false, order: 1 }],
+    projects: [
+      { id: 'p1', clientId: 'c_side', name: 'Build', color: '#7BD88F', archived: false, order: 1 },
+      { id: 'p2', clientId: 'c_side', name: 'Launch', color: null, archived: false, order: 2 },
+    ],
     cycles: [{ id: 'cy_1', number: 1, name: 'Week 1', startsAt: '2026-08-17', endsAt: '2026-08-23' }],
     counters: {},
     labels: [{ id: 'l_ship', name: 'ship', color: '#E0A458' }],
@@ -68,8 +71,9 @@ store.state = {
   issues: [
     issue('i1', 42, 'c_own', 'Landing hero', 'doing', 1),
     issue('i2', 41, 'c_own', 'Pricing — three tiers', 'todo', 2),
-    issue('i3', 7, 'c_side', 'Module 12', 'waiting', 3),
-    issue('i4', 8, 'c_side', 'Closed already', 'done', 0, { completedAt: '2026-08-17T09:00:00Z' }),
+    // p1 carries a colour and p2 does not, so both project markers render here.
+    issue('i3', 7, 'c_side', 'Module 12', 'waiting', 3, { projectId: 'p1' }),
+    issue('i4', 8, 'c_side', 'Closed already', 'done', 0, { projectId: 'p2', completedAt: '2026-08-17T09:00:00Z' }),
     issue('i5', 1, 'c_client', 'Straight from the inbox', 'inbox', 0),
   ],
   currentCycleId: 'cy_1',

@@ -438,6 +438,15 @@ button {
   flex: none;
 }
 
+/* A project without a colour keeps the dash: the marker says "no colour chosen"
+   rather than borrowing one and implying a grouping nobody set. */
+.side-project[data-colored='true']::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--project-color);
+}
+
 .side-project:hover {
   background: var(--hover);
   color: var(--text-dim);
@@ -677,12 +686,29 @@ button {
 }
 
 .row-project {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11px;
   color: var(--text-faint);
   max-width: 130px;
+  min-width: 0;
+}
+
+/* The ellipsis lives on the name, not the chip: a flex parent clips its child
+   without ever drawing one. */
+.row-project-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.project-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--project-color);
 }
 
 .row-due {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { LOCALES, useT, type Locale, type MessageKey } from '../i18n'
 import { store, useStore } from '../store'
-import type { Client, Issue, Workspace } from '../types'
+import type { Client, Issue, Project, Workspace } from '../types'
 import { formatStamp } from '../util/date'
 import { Icon } from './bits'
 
@@ -96,22 +96,43 @@ export function Settings() {
                         {client.name}
                       </span>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {projects.map((project) => (
-                          <input
-                            key={project.id}
-                            className="field"
-                            style={{ width: 150 }}
-                            defaultValue={project.name}
-                            onBlur={(e) =>
-                              e.target.value !== project.name &&
-                              save({
-                                projects: workspace.projects.map((p) =>
-                                  p.id === project.id ? { ...p, name: e.target.value } : p
-                                ),
-                              })
-                            }
-                          />
-                        ))}
+                        {projects.map((project) => {
+                          const patchProject = (patch: Partial<Project>) =>
+                            save({
+                              projects: workspace.projects.map((p) =>
+                                p.id === project.id ? { ...p, ...patch } : p
+                              ),
+                            })
+                          return (
+                            <span key={project.id} className="project-editor">
+                              <input
+                                type="color"
+                                className="swatch"
+                                // A colour input cannot say "none", so an unset project shows the
+                                // client's colour as the starting point of the picker rather than
+                                // a colour of its own — picking one is what makes it one.
+                                value={project.color ?? client.color}
+                                title={t('settings.projectColor')}
+                                onChange={(e) => patchProject({ color: e.target.value })}
+                              />
+                              <input
+                                className="field"
+                                style={{ width: 130 }}
+                                defaultValue={project.name}
+                                onBlur={(e) => e.target.value !== project.name && patchProject({ name: e.target.value })}
+                              />
+                              {project.color && (
+                                <button
+                                  className="ghost-btn"
+                                  title={t('settings.projectColorClear')}
+                                  onClick={() => patchProject({ color: null })}
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </span>
+                          )
+                        })}
                         <button
                           className="ghost-btn"
                           onClick={() => void store.addProject(client.id, 'New project')}

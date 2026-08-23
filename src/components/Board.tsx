@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { issuesForView, store, useStore } from '../store'
 import { BOARD_STATUSES, STATUS_MAP, type Issue, type Status } from '../types'
-import { formatDue, isOverdue } from '../util/date'
+import { daysSince, formatDue, isOverdue } from '../util/date'
 import { Icon, PriorityBars, StatusRing } from './bits'
 
 export function Board() {
@@ -157,6 +157,14 @@ function Column({
                   {client?.key}-{issue.num}
                 </span>
                 <PriorityBars priority={issue.priority} />
+                {issue.status === 'waiting' && daysSince(issue.statusChangedAt ?? issue.createdAt) > 0 && (
+                  <span
+                    className="row-waiting"
+                    data-stale={daysSince(issue.statusChangedAt ?? issue.createdAt) >= 7}
+                  >
+                    {t('row.waitingDays', { days: daysSince(issue.statusChangedAt ?? issue.createdAt) })}
+                  </span>
+                )}
                 {issue.noteLinks.length > 0 && <Icon.note />}
                 {issue.checklist.length > 0 && (
                   <span className="mono" style={{ fontSize: 10 }}>

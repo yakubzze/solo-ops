@@ -4,6 +4,53 @@ All notable changes to this project are documented here. This project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it reaches v1;
 during the preview, the minor version moves when the on-disk format changes.
 
+## [Unreleased]
+
+### Added
+
+- Per-project colour. `Project.color` has been in the type and on disk since
+  0.1.0 with nothing reading it. It is now set in Settings → clients (colour
+  input per project, `×` clears it back to `null`) and rendered as a 5px dot on
+  the sidebar project row and on the project chip in the list. A project with no
+  colour renders the previous dash and no dot.
+- `scripts/capture.mjs` — writes one issue into the inbox over the HTTP API.
+  `-c KEY` picks the client (default: first non-archived `own` client), `-p PORT`
+  the port (default 4321, or `SOLO_OPS_PORT`). Title stored verbatim; the
+  one-field grammar is not parsed here. `num` is not sent, so the server stays
+  the only allocator. Exit codes: 0 written, 1 usage or unknown client, 2 no
+  server on that port.
+- Days in status on issues with status `waiting`, in the list and on the board.
+  Not rendered below 1 day; uses the overdue colour from 7 days.
+
+### Changed
+
+- The project chip was hidden on every `client` view. It is now hidden only when
+  a single project is selected; on a client view with no project selected the
+  colour dot renders and the name stays hidden.
+- `completedAt` and the new `statusChangedAt` derivation moved into one
+  `applyStatusChange()` in `server/store.mjs`, used by both `upsertIssue` and
+  `updateManyIssues`. The `completedAt` rules were previously duplicated in both.
+
+### Fixed
+
+- Blank interface when an issue was missing `noteLinks`, `checklist` or `labels`.
+  IssueList, Board and IssueDetail read `.length` off those three at eight call
+  sites with no guard, so one such issue threw during render and left an empty
+  page with no error shown. Defaulted in `src/store.ts` on load and reload rather
+  than per view.
+- `stop.command` did not stop the server while a browser was connected to it.
+  `lsof -ti tcp:$PORT` lists connected processes as well as the listener, and the
+  loop refused the first non-server PID and exited. Now `-sTCP:LISTEN`.
+- `start.command` and `stop.command` are committed with the executable bit set.
+
+### On-disk format
+
+- Issues gain `statusChangedAt` (ISO 8601). Set by the server whenever `status`
+  differs from the stored value, on every write path. Issues written before this
+  have no such field and readers fall back to `createdAt`, which over-reports the
+  age until the next status change. No file is rewritten to add it; it appears
+  when an issue is next saved. This is the change that moves the minor version.
+
 ## [0.1.0] — 2026-08-17
 
 First public preview.

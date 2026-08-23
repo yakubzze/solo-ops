@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { t, useT, type MessageKey } from '../i18n'
 import { issuesForView, store, useStore, viewShowsClosed, type GroupBy } from '../store'
 import { PRIORITIES, PRIORITY_MAP, STATUSES, STATUS_MAP, type Issue, type Priority, type Status } from '../types'
-import { formatDue, isOverdue, todayISO } from '../util/date'
+import { daysSince, formatDue, isOverdue, todayISO } from '../util/date'
 import { excerpt } from '../util/markdown'
 import { Icon, PriorityBars, StatusRing, useMenu, type MenuItem } from './bits'
 
@@ -171,6 +171,10 @@ function Row({
   const showProjectName = Boolean(project) && !projectImplied && !projectNameImplied
   const labels = (workspace?.labels ?? []).filter((l) => issue.labels.includes(l.id))
   const due = formatDue(issue.dueDate)
+  /* Waiting only, and not below a day: "0d" costs a slot in the row to say
+     nothing. An issue predating statusChangedAt falls back to createdAt, which
+     over-reports the age — the harmless direction here. */
+  const waitingDays = issue.status === 'waiting' ? daysSince(issue.statusChangedAt ?? issue.createdAt) : 0
 
   return (
     <div
@@ -251,6 +255,11 @@ function Row({
               <span className="project-dot" style={{ ['--project-color' as string]: project.color }} />
             )}
             {showProjectName && <span className="row-project-name">{project.name}</span>}
+          </span>
+        )}
+        {waitingDays > 0 && (
+          <span className="row-waiting" data-stale={waitingDays >= 7}>
+            {t('row.waitingDays', { days: waitingDays })}
           </span>
         )}
         {due && (

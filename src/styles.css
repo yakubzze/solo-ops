@@ -711,6 +711,19 @@ button {
   background: var(--project-color);
 }
 
+.row-waiting {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  flex: none;
+}
+
+/* Seven days: past a week, "blocked on someone else" is worth noticing rather
+   than assuming. */
+.row-waiting[data-stale='true'] {
+  color: var(--prio-1);
+}
+
 .row-due {
   font-family: var(--font-mono);
   font-size: 10.5px;

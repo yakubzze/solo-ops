@@ -81,3 +81,8 @@ export function formatStamp(iso: string): string {
 export function daysUntil(iso: string): number {
   return daysBetween(todayISO(), iso)
 }
+
+/** Whole days since a timestamp. Negative clock skew reads as 0, never as "tomorrow". */
+export function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 864e5))
+}

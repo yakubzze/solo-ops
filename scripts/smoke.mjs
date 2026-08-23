@@ -72,7 +72,7 @@ store.state = {
     issue('i1', 42, 'c_own', 'Landing hero', 'doing', 1),
     issue('i2', 41, 'c_own', 'Pricing — three tiers', 'todo', 2),
     // p1 carries a colour and p2 does not, so both project markers render here.
-    issue('i3', 7, 'c_side', 'Module 12', 'waiting', 3, { projectId: 'p1' }),
+    issue('i3', 7, 'c_side', 'Module 12', 'waiting', 3, { projectId: 'p1', statusChangedAt: '2026-08-01T08:00:00Z' }),
     issue('i4', 8, 'c_side', 'Closed already', 'done', 0, { projectId: 'p2', completedAt: '2026-08-17T09:00:00Z' }),
     issue('i5', 1, 'c_client', 'Straight from the inbox', 'inbox', 0),
   ],

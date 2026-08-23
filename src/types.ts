@@ -68,6 +68,8 @@ export interface Issue {
   order: number
   createdAt: string
   updatedAt: string
+  /** When the status last changed. Absent on issues written before it existed. */
+  statusChangedAt?: string
   completedAt: string | null
 }
 

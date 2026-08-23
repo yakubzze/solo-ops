@@ -3,7 +3,10 @@
 # Grant permission once: chmod +x stop.command
 PORT="${1:-4321}"
 
-PIDS=$(lsof -ti "tcp:$PORT" 2>/dev/null)
+# -sTCP:LISTEN, because `lsof -ti tcp:PORT` also lists processes merely
+# CONNECTED to it. With the app open in a browser that is the browser, and
+# the loop below refuses to kill it and exits before reaching the server.
+PIDS=$(lsof -ti "tcp:$PORT" -sTCP:LISTEN 2>/dev/null)
 if [ -z "$PIDS" ]; then
   echo "Nothing was listening on port $PORT - the app is not running."
   exit 0

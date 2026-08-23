@@ -63,6 +63,24 @@ share one port.
 
 Another port: `PORT=4322 npm start`.
 
+### Capturing without opening it
+
+The tracker only helps with what reaches it, and reaching it should not mean
+being in its window.
+
+```bash
+node scripts/capture.mjs "call the accountant about the invoice"
+node scripts/capture.mjs -c ACME "they still owe us the brief"
+```
+
+Both land in the inbox. Bind the first form to a system-wide shortcut — on
+macOS, Shortcuts → *Run Shell Script* — to capture without switching windows.
+
+The text is stored exactly as typed, `@client !1 ~friday` included. The script
+does not parse that grammar; it is read in one place, in the app, and a second
+reader here would be a second thing to keep in step. `-c` routes to a client,
+the rest is triaged in the inbox.
+
 ## Where your data lives
 
 ```
@@ -201,6 +219,7 @@ if one of them stands between you and using this, say so in an issue.
 | `src/i18n.ts` | Every user-visible string, in every language |
 | `src/hotkeys.ts` | One global key listener |
 | `scripts/smoke.mjs` | Renders 11 interface states in Node, plus both languages |
+| `scripts/capture.mjs` | Puts a line into the inbox from outside the app |
 
 There are no runtime dependencies beyond React. Markdown, drag and drop, the
 command palette and the store are all local code, which is why this has an

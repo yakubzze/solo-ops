@@ -366,6 +366,23 @@ export function nextNum(clientId) {
   return next
 }
 
+/**
+ * What a status transition implies, in one place.
+ *
+ * These rules were written twice — once in upsertIssue, once in the batch path —
+ * and a third writer arriving to add a fourth rule would have had to find both.
+ * `statusChangedAt` is what tells you an issue has been Waiting for nine days
+ * rather than merely edited nine days ago, so it has to hold on every path a
+ * status can change on, including undo and a bulk change across a selection.
+ */
+function applyStatusChange(previous, merged, now) {
+  if (merged.status !== previous.status) merged.statusChangedAt = now
+  else merged.statusChangedAt = previous.statusChangedAt ?? previous.createdAt
+  if (merged.status === 'done' && previous.status !== 'done') merged.completedAt = now
+  if (merged.status !== 'done' && previous.status === 'done') merged.completedAt = null
+  return merged
+}
+
 export function upsertIssue(issue) {
   const stale = assertNoExternalChange([issuesFile(clientKeyOf(issue.clientId)), WORKSPACE_FILE])
   if (stale) throw stale
@@ -382,6 +399,7 @@ export function upsertIssue(issue) {
       ...issue,
       num: issue.num ?? nextNum(issue.clientId),
       createdAt: issue.createdAt ?? now,
+      statusChangedAt: issue.statusChangedAt ?? issue.createdAt ?? now,
       updatedAt: now,
     }
     entry.issues.push(created)
@@ -391,9 +409,7 @@ export function upsertIssue(issue) {
   }
 
   const previous = entry.issues[idx]
-  const merged = { ...previous, ...issue, updatedAt: now }
-  if (merged.status === 'done' && previous.status !== 'done') merged.completedAt = now
-  if (merged.status !== 'done' && previous.status === 'done') merged.completedAt = null
+  const merged = applyStatusChange(previous, { ...previous, ...issue, updatedAt: now }, now)
   entry.issues[idx] = merged
   persistClient(issue.clientId)
   return merged
@@ -444,9 +460,7 @@ export function updateManyIssues(patches) {
     const idx = entry.issues.findIndex((i) => i.id === patch.id)
     if (idx === -1) continue
     const previous = entry.issues[idx]
-    const merged = { ...previous, ...patch, updatedAt: now }
-    if (merged.status === 'done' && previous.status !== 'done') merged.completedAt = now
-    if (merged.status !== 'done' && previous.status === 'done') merged.completedAt = null
+    const merged = applyStatusChange(previous, { ...previous, ...patch, updatedAt: now }, now)
     entry.issues[idx] = merged
     touched.add(patch.clientId)
     result.push(merged)

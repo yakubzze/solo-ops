@@ -260,6 +260,12 @@ export function init() {
     }
   }
   writeJsonAtomic(WORKSPACE_FILE, workspace)
+  // trash.json is not part of the in-memory state, but trashIssue() checks it for
+  // external changes BEFORE it reads it. With no snapshot from this process
+  // changedOnDisk() has to assume the worst, so the first delete after every start
+  // failed as STALE — and a restart re-armed it. Read it once here to prime the snapshot.
+  readJson(TRASH_FILE, [])
+
   ensureCycleForToday()
   backupOnce()
   return getState()
@@ -490,9 +496,11 @@ export function readTrash() {
 }
 
 export function restoreFromTrash(issueId) {
-  const trash = readTrash()
+  // Assert BEFORE reading: readTrash() refreshes the snapshot, so a check after it
+  // could never fail — the guard was dead code.
   const staleRestore = assertNoExternalChange([TRASH_FILE])
   if (staleRestore) throw staleRestore
+  const trash = readTrash()
   const idx = trash.findIndex((t) => t.issue.id === issueId)
   if (idx === -1) return null
   const [entry] = trash.splice(idx, 1)

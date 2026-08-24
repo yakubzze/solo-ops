@@ -373,7 +373,9 @@ async function main() {
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.error(`\n  Port ${PORT} is busy. It is probably already running: http://localhost:${PORT}`)
-      console.error(`  Another port:  PORT=4322 npm run dev\n`)
+      console.error('  Do NOT start a second one on another port: it would share this data')
+      console.error('  directory, and two snapshots of the same files end up refusing each')
+      console.error("  other's writes with \"This file changed outside the app\".\n")
       process.exit(1)
     }
     throw err

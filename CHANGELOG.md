@@ -24,6 +24,13 @@ during the preview, the minor version moves when the on-disk format changes.
 
 ### Changed
 
+- `stop.command` with no argument now stops every solo-ops server on the machine,
+  found through `pgrep -f`, not just the one on the default port. Instances
+  started on another port share the same data directory and each keeps its own
+  in-memory snapshot, so left running they refuse each other's writes. With a
+  port argument it behaves as before.
+- The `EADDRINUSE` message no longer suggests starting a second server on
+  another port. It says why that is a bad idea instead.
 - The project chip was hidden on every `client` view. It is now hidden only when
   a single project is selected; on a client view with no project selected the
   colour dot renders and the name stays hidden.
@@ -42,6 +49,14 @@ during the preview, the minor version moves when the on-disk format changes.
   `lsof -ti tcp:$PORT` lists connected processes as well as the listener, and the
   loop refused the first non-server PID and exited. Now `-sTCP:LISTEN`.
 - `start.command` and `stop.command` are committed with the executable bit set.
+- The first delete of every run was refused as "This file changed outside the app
+  (trash.json)". `trashIssue` asks `assertNoExternalChange` about `trash.json`
+  before anything has read it, and with no snapshot from this process the check
+  has to assume the file changed. `init` now reads it once, so the snapshot
+  exists from the start. A restart used to re-arm the bug; opening the trash tab
+  was what cleared it, which made it look intermittent.
+- `restoreFromTrash` checked for external changes after `readTrash()` had already
+  refreshed the snapshot, so that guard could never fire. It now checks first.
 
 ### On-disk format
 

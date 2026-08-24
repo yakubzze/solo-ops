@@ -29,6 +29,13 @@ if (!sandbox.startsWith(tmpdir())) {
   process.exit(1)
 }
 
+// A store that has been used before already has a trash file on disk. The first-delete
+// bug only reproduces then: an empty sandbox has no trash.json, and the guard skips
+// files that do not exist. Without this line the regression test below passes on the
+// broken code too.
+mkdirSync(DATA_DIR, { recursive: true })
+writeFileSync(path.join(DATA_DIR, 'trash.json'), '[]\n')
+
 mkdirSync(path.join(NOTES_DIR, '_Inbox'), { recursive: true })
 mkdirSync(OUTSIDE, { recursive: true })
 writeFileSync(path.join(OUTSIDE, 'secret.md'), 'must never be reachable\n')
@@ -225,6 +232,42 @@ async function run() {
   check('three notes with one title produce three files', new Set(names).size === 3, names.join(' | '))
   const bodies = names.map((rel) => readFileSync(path.join(NOTES_DIR, rel), 'utf8'))
   check('none of them overwrote another', new Set(bodies).size === 3)
+
+  console.log('\nFirst delete after a fresh start\n')
+
+  // trash.json is checked for external changes before it is ever read. Without a
+  // snapshot taken at startup the check had to assume the file had changed, so the
+  // FIRST delete in every process was refused as stale and a restart only re-armed it.
+  // Nothing above this line touches /api/trash, so the process is still "trash unread".
+  const firstState = (await call('GET', '/api/state')).json
+  const doomed = {
+    id: 'i_first_delete',
+    num: 899,
+    clientId: firstState.workspace.clients[0].id,
+    projectId: null,
+    title: 'deleted before the trash was ever opened',
+    body: '',
+    status: 'todo',
+    priority: 0,
+    labels: [],
+    checklist: [],
+    noteLinks: [],
+    cycleId: null,
+    dueDate: null,
+    order: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    completedAt: null,
+  }
+  await call('PUT', '/api/issues', { body: doomed })
+  const firstDelete = await call('POST', '/api/issues/trash', { body: { id: doomed.id, clientId: doomed.clientId } })
+  check('the first delete of a run is not refused as stale', firstDelete.status === 200, `got ${firstDelete.status}: ${firstDelete.text.slice(0, 120)}`)
+  const trashed = (await call('GET', '/api/trash')).json
+  check(
+    'it actually landed in the trash',
+    (trashed?.trash ?? []).some((t) => t.issue.id === doomed.id),
+    (trashed?.trash ?? []).map((t) => t.issue.id).join(', ')
+  )
 
   console.log('\nStale-write guard\n')
 

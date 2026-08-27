@@ -7,9 +7,18 @@
  *
  * Usage: npm run integrity
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import http from 'node:http'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -315,6 +324,24 @@ async function run() {
     survivor.some((i) => i.id === 'i_from_elsewhere'),
     survivor.map((i) => i.id).join(', ')
   )
+
+  console.log('\nSync resilience\n')
+
+  // A folder renamed on the other machine is, from here, simply gone. Creating it and
+  // seeding an example workspace is how the app once came up looking perfectly healthy
+  // with nobody's data in it.
+  const neverSynced = path.join(sandbox, 'never-synced')
+  const refused = spawnSync(process.execPath, [path.join(ROOT, 'server', 'index.mjs'), '--no-open'], {
+    env: { ...process.env, PORT: String(PORT + 1), SOLO_OPS_DATA_DIR: neverSynced, SOLO_OPS_NOTES_DIR: NOTES_DIR },
+    encoding: 'utf8',
+    timeout: 20_000,
+  })
+  check(
+    'a configured store that is not on disk stops the server',
+    refused.status === 1 && refused.signal === null,
+    `status ${refused.status}, signal ${refused.signal}`
+  )
+  check('nothing was created in its place', !existsSync(neverSynced))
 
   console.log(
     `\n${failed ? `${failed} failed, ` : ''}${passed} passed` + (serverDied ? ` (server exited with ${serverDied})` : '')

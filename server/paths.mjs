@@ -86,6 +86,19 @@ export const NOTES_INBOX = resolveInbox()
 export const OBSIDIAN_VAULT = config.obsidianVault ?? process.env.SOLO_OPS_OBSIDIAN_VAULT ?? null
 
 export function ensureDirs() {
+  // A configured store that is not on disk almost never means "make me a new one".
+  // It means the sync client has not caught up yet, or the folder was renamed on the
+  // other machine. Creating it here seeds an example workspace on top of that, and
+  // the app then looks perfectly healthy while showing data belonging to nobody.
+  // Only the default location may be brought into existence.
+  if (DATA_DIR_SOURCE !== 'default' && !existsSync(DATA_DIR)) {
+    throw new Error(
+      `the configured data folder is not there.\n\n` +
+        `      ${DATA_DIR}   [${DATA_DIR_SOURCE}]\n\n` +
+        `      Nothing was created. If it lives in a synced folder, let the sync finish;\n` +
+        `      if it was renamed or moved, point dataDir at where it is now.`
+    )
+  }
   for (const dir of [DATA_DIR, ISSUES_DIR, BACKUP_DIR]) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   }

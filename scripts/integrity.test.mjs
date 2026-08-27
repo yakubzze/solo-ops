@@ -15,6 +15,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -84,6 +85,35 @@ async function call(method, url, { body, headers = {} } = {}) {
   return { status: res.status, text, json: parsed }
 }
 
+/** Collects `event:` names off the SSE stream. Node has no EventSource to lean on. */
+function openEventStream(sink) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: '127.0.0.1', port: PORT, path: '/api/events', headers: { accept: 'text/event-stream' } },
+      (res) => {
+        res.setEncoding('utf8')
+        res.on('data', (chunk) => {
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('event: ')) sink.push(line.slice(7).trim())
+          }
+        })
+        resolve(req)
+      }
+    )
+    req.on('error', reject)
+    req.end()
+  })
+}
+
+async function waitFor(condition, ms) {
+  const until = Date.now() + ms
+  while (Date.now() < until) {
+    if (condition()) return true
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  return condition()
+}
+
 function rawRequest(pathname, headers) {
   return new Promise((resolve, reject) => {
     const req = http.request(
@@ -106,6 +136,8 @@ const server = spawn(process.execPath, [path.join(ROOT, 'server', 'index.mjs'), 
     PORT: String(PORT),
     SOLO_OPS_DATA_DIR: DATA_DIR,
     SOLO_OPS_NOTES_DIR: NOTES_DIR,
+    // The fallback check runs every 20 s in real use. The suite cannot wait that long.
+    SOLO_OPS_WATCH_POLL_MS: '400',
   },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
@@ -342,6 +374,28 @@ async function run() {
     `status ${refused.status}, signal ${refused.signal}`
   )
   check('nothing was created in its place', !existsSync(neverSynced))
+
+  // fs.watch follows the directory it was armed on, so a replaced folder stops producing
+  // events without saying so. Only the poll can see this change; the reload first puts the
+  // server back in step with the disk, so nothing left over from the case above counts.
+  await call('POST', '/api/state/reload')
+  const events = []
+  const stream = await openEventStream(events)
+
+  const issuesDir = path.dirname(issuesFile)
+  const parked = `${issuesDir}.parked`
+  renameSync(issuesDir, parked)
+  mkdirSync(issuesDir)
+  for (const name of readdirSync(parked)) {
+    writeFileSync(path.join(issuesDir, name), readFileSync(path.join(parked, name), 'utf8'))
+  }
+  const afterSwap = JSON.parse(readFileSync(issuesFile, 'utf8'))
+  afterSwap.push({ ...issue, id: 'i_after_swap', num: 902, title: 'written after the folder was replaced' })
+  writeFileSync(issuesFile, JSON.stringify(afterSwap, null, 2) + '\n', 'utf8')
+
+  const noticed = await waitFor(() => events.includes('external-change'), 6000)
+  check('a change survives the issues folder being replaced', noticed, events.join(', ') || 'no events arrived')
+  stream.destroy()
 
   console.log(
     `\n${failed ? `${failed} failed, ` : ''}${passed} passed` + (serverDied ? ` (server exited with ${serverDied})` : '')

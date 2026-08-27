@@ -11,6 +11,9 @@ const NO_OPEN = process.argv.includes('--no-open')
 const PORT = Number(process.env.PORT ?? 4321)
 const DIST = path.join(ROOT, 'dist')
 
+/** How often the watcher is checked and, failing it, the files are compared directly. */
+const WATCH_POLL_MS = Number(process.env.SOLO_OPS_WATCH_POLL_MS ?? 20_000)
+
 /* ------------------------------------------------------------------- helpers */
 
 const MIME = {
@@ -104,34 +107,78 @@ function mute() {
   muteUntil = Date.now() + 1200
 }
 
-function startWatcher() {
-  let timer = null
+/** dir → the live watcher on it, plus the identity of the directory it was armed on. */
+const watchers = new Map()
+let changeTimer = null
+let lastPollAt = null
 
-  const onChange = (_event, filename) => {
-    if (Date.now() < muteUntil) return
-    // Temp files and backups are not data; their movement concerns nobody.
-    const name = String(filename ?? '')
-    if (name && (!name.endsWith('.json') || name.endsWith('.tmp'))) return
+function onChange(_event, filename) {
+  if (Date.now() < muteUntil) return
+  // Temp files and backups are not data; their movement concerns nobody.
+  const name = String(filename ?? '')
+  if (name && (!name.endsWith('.json') || name.endsWith('.tmp'))) return
 
-    clearTimeout(timer)
-    timer = setTimeout(() => {
-      // A filesystem event only means "something touched a file". Only differing CONTENT
-      // means "someone changed it elsewhere" — otherwise the app wakes itself in a loop.
-      if (!store.hasExternalChange()) return
-      broadcast('external-change', { at: new Date().toISOString() })
-    }, 400)
+  clearTimeout(changeTimer)
+  changeTimer = setTimeout(() => {
+    // A filesystem event only means "something touched a file". Only differing CONTENT
+    // means "someone changed it elsewhere" — otherwise the app wakes itself in a loop.
+    if (!store.hasExternalChange()) return
+    broadcast('external-change', { at: new Date().toISOString() })
+  }, 400)
+}
+
+/** The inode is how a replaced directory is told apart from the same one, still there. */
+function directoryId(dir) {
+  try {
+    return statSync(dir).ino
+  } catch {
+    return null
   }
+}
 
+function armWatchers() {
   for (const dir of [DATA_DIR, ISSUES_DIR]) {
-    if (!existsSync(dir)) continue
+    const id = directoryId(dir)
+    if (id === null) continue
+
+    const live = watchers.get(dir)
+    // A watcher follows the directory it was given, not the path. When a sync client
+    // renames the folder — which is what a rename on the other machine looks like here —
+    // the old handle stays open on something nobody is writing to any more, and emits
+    // nothing to say so. Re-arm on the directory that now holds the data.
+    if (live && live.id === id) continue
+    if (live) live.watcher.close()
+
     try {
-      watch(dir, { persistent: false }, onChange)
+      const watcher = watch(dir, { persistent: false }, onChange)
+      watcher.on('error', () => {
+        watcher.close()
+        watchers.delete(dir)
+      })
+      watchers.set(dir, { watcher, id })
     } catch {
-      // fs.watch does not work on some synced volumes; the app keeps running,
-      // just without auto-detecting changes made on another machine.
-      console.warn(`[watch] cannot watch ${dir} — auto-refresh disabled`)
+      // fs.watch is not available on every volume. The poll below is the fallback.
+      watchers.delete(dir)
     }
   }
+}
+
+/**
+ * fs.watch is the fast path, never the guarantee: handles die when a synced folder is
+ * replaced and no event is emitted to announce it. This tick re-arms whatever died and,
+ * while a browser is listening, compares the files itself — so a change made on the
+ * other machine arrives at worst WATCH_POLL_MS late instead of not at all.
+ */
+function poll() {
+  armWatchers()
+  lastPollAt = new Date().toISOString()
+  if (!clients.size) return
+  if (store.hasExternalChange()) broadcast('external-change', { at: lastPollAt })
+}
+
+function startWatcher() {
+  armWatchers()
+  if (WATCH_POLL_MS > 0) setInterval(poll, WATCH_POLL_MS).unref()
 }
 
 /* ----------------------------------------------------------------------- API */

@@ -96,7 +96,8 @@ export function ensureDirs() {
       `the configured data folder is not there.\n\n` +
         `      ${DATA_DIR}   [${DATA_DIR_SOURCE}]\n\n` +
         `      Nothing was created. If it lives in a synced folder, let the sync finish;\n` +
-        `      if it was renamed or moved, point dataDir at where it is now.`
+        `      if it was renamed or moved, point dataDir at where it is now.\n` +
+        `      Starting a new store here is a one-liner: mkdir -p "${DATA_DIR}"`
     )
   }
   for (const dir of [DATA_DIR, ISSUES_DIR, BACKUP_DIR]) {

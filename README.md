@@ -102,6 +102,13 @@ follow, because nothing reads the checkout path. Copy `config.example.json` to
 
 `SOLO_OPS_DATA_DIR` and `SOLO_OPS_NOTES_DIR` do the same for a single run.
 
+Create that folder once — `mkdir -p ~/Dropbox/solo-ops` — before the first run. A
+configured folder that is not on disk stops the app rather than being created: by far
+the likeliest reason for one to go missing is that sync has not caught up, or that it
+was renamed on your other machine, and seeding an example workspace on top of that is
+indistinguishable from your data being gone. Only the default `~/solo-ops` is still
+created on demand.
+
 ### If you sync the folder, three things will bite you
 
 This is the same list as in [agent-ops](https://github.com/yakubzze/agent-ops),

@@ -79,6 +79,8 @@ jobs:
         env:
           SOLO_OPS_DATA_DIR: ${{ runner.temp }}/solo-ops-ci
         run: |
+          set -euo pipefail
+          mkdir -p "$SOLO_OPS_DATA_DIR"
           node server/index.mjs --no-open &
           for i in $(seq 1 30); do
             if curl -sf http://localhost:4321/api/health > /dev/null; then break; fi

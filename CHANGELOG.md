@@ -39,7 +39,8 @@ during the preview, the minor version moves when the on-disk format changes.
   created. It almost always means the sync has not caught up, or the folder was
   renamed on the other machine; creating it seeded the example workspace on top
   of that, and the app came up healthy-looking with nobody's data in it. Only the
-  default location is still created on demand.
+  default location is still created on demand — for any other, `mkdir -p` it once
+  when you set it up. The error says so.
 - Conflict artefacts are recognised in both spellings sync clients use:
   `workspace 2.json` (macOS) and `workspace(1).json` (iCloud on Windows). The
   second went unreported entirely, which left an empty canonical file looking

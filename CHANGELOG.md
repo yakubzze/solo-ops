@@ -8,6 +8,17 @@ during the preview, the minor version moves when the on-disk format changes.
 
 ### Added
 
+- Auto-refresh now has a fallback and a reported state. `fs.watch` follows the
+  directory it was armed on, so a folder renamed by a sync client leaves a live
+  handle watching nothing and says nothing about it. Watchers are re-armed when
+  the directory behind the path changes identity, and every 20 seconds — while a
+  browser is listening — the files are compared directly. `SOLO_OPS_WATCH_POLL_MS`
+  sets the interval; `0` turns the fallback off. `/api/health` gained `sync`
+  (`dataDirPresent`, `watching`, `pollMs`, `lastPollAt`) and Settings → data
+  states in a sentence which mechanism is carrying it.
+- A data folder that disappears under a running server is now said out loud, on
+  load and in Settings. The server holds its state in memory, so until then the
+  session looked entirely normal.
 - Per-project colour. `Project.color` has been in the type and on disk since
   0.1.0 with nothing reading it. It is now set in Settings → clients (colour
   input per project, `×` clears it back to `null`) and rendered as a 5px dot on
@@ -24,6 +35,15 @@ during the preview, the minor version moves when the on-disk format changes.
 
 ### Changed
 
+- A configured `dataDir` that does not exist stops the boot instead of being
+  created. It almost always means the sync has not caught up, or the folder was
+  renamed on the other machine; creating it seeded the example workspace on top
+  of that, and the app came up healthy-looking with nobody's data in it. Only the
+  default location is still created on demand.
+- Conflict artefacts are recognised in both spellings sync clients use:
+  `workspace 2.json` (macOS) and `workspace(1).json` (iCloud on Windows). The
+  second went unreported entirely, which left an empty canonical file looking
+  authoritative while the copy beside it held the other machine's work.
 - `stop.command` with no argument now stops every solo-ops server on the machine,
   found through `pgrep -f`, not just the one on the default port. Instances
   started on another port share the same data directory and each keeps its own

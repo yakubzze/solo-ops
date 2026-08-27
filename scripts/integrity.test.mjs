@@ -397,6 +397,15 @@ async function run() {
   check('a change survives the issues folder being replaced', noticed, events.join(', ') || 'no events arrived')
   stream.destroy()
 
+  // Two sync clients, two spellings for the same thing. The Windows one went unreported
+  // for as long as it existed, which is the worst case: the canonical file is empty and
+  // reads as authoritative while the copy beside it holds the work.
+  writeFileSync(path.join(issuesDir, `${clientKey}(1).json`), '[]\n')
+  writeFileSync(path.join(DATA_DIR, 'workspace 2.json'), '{}\n')
+  const reported = (await call('GET', '/api/health')).json.conflicts.map((c) => c.name)
+  check('a Windows sync copy is reported', reported.includes(`${clientKey}(1).json`), reported.join(', '))
+  check('a macOS sync copy is still reported', reported.includes('workspace 2.json'), reported.join(', '))
+
   console.log(
     `\n${failed ? `${failed} failed, ` : ''}${passed} passed` + (serverDied ? ` (server exited with ${serverDied})` : '')
   )

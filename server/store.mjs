@@ -184,15 +184,22 @@ function pruneBackups() {
 /* ---------------------------------------------------------- sync conflicts */
 
 /**
- * Sync clients resolve collisions by creating `file 2.json` — and, as more than one
- * person has learned the hard way, that is sometimes the ONLY copy, not a duplicate.
+ * Sync clients resolve collisions by writing their copy beside the original — and, as
+ * more than one person has learned the hard way, that copy is sometimes the ONLY one.
+ *
+ * They do not agree on how to spell it. macOS writes `workspace 2.json`; iCloud on
+ * Windows writes `workspace(1).json`. Only the first spelling was matched here, so on
+ * Windows the file holding the other machine's work was neither reported nor visible
+ * anywhere in the app — the canonical file sat there empty and looked authoritative.
  */
+const CONFLICT_RE = /^(.+?)(?: \d+|\(\d+\))\.json$/
+
 export function findConflictArtifacts() {
   const found = []
   for (const dir of [DATA_DIR, ISSUES_DIR]) {
     if (!existsSync(dir)) continue
     for (const name of readdirSync(dir)) {
-      const m = /^(.+) \d+\.json$/.exec(name)
+      const m = CONFLICT_RE.exec(name)
       if (!m) continue
       const original = path.join(dir, `${m[1]}.json`)
       found.push({

@@ -80,6 +80,7 @@ store.state = {
   health: {
     ok: true, dev: false,
     paths: { dataDir: '/home/u/solo-ops', dataDirSource: 'default', notesDir: '/home/u/notes', notesDirSource: 'config.json', notesInbox: '/home/u/notes/_Inbox', obsidianVault: null, notesConnected: true },
+    sync: { dataDirPresent: true, watching: ['/home/u/solo-ops', '/home/u/solo-ops/issues'], pollMs: 20000, lastPollAt: '2026-08-17T09:05:00Z' },
     notes: { connected: true, dir: '/home/u/notes', inbox: '/home/u/notes/_Inbox', obsidianVault: null, inboxExists: true },
     conflicts: [],
   },

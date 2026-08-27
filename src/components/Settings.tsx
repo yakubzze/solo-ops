@@ -24,6 +24,15 @@ export function Settings() {
 
   if (!open || !workspace) return null
 
+  const sync = health?.sync
+  const seconds = Math.round((sync?.pollMs ?? 0) / 1000)
+  const autoRefresh =
+    !sync ? t('settings.autoRefreshOff')
+    : sync.watching.length && sync.pollMs > 0 ? t('settings.autoRefreshBoth', { seconds })
+    : sync.watching.length ? t('settings.autoRefreshEventsOnly')
+    : sync.pollMs > 0 ? t('settings.autoRefreshPollOnly', { seconds })
+    : t('settings.autoRefreshOff')
+
   const save = (next: Partial<Workspace>) => void store.saveWorkspace({ ...workspace, ...next })
 
   const patchClient = (id: string, patch: Partial<Client>) =>
@@ -153,11 +162,23 @@ export function Settings() {
               </div>
               <div className="set-row">
                 <span className="panel-label">{t('settings.folder')}</span>
-                <span className="set-value">{health?.paths.dataDir}</span>
+                <span className="set-value">
+                  {health?.paths.dataDir}
+                  {sync && !sync.dataDirPresent && (
+                    <>
+                      <br />
+                      <span style={{ color: 'var(--prio-2)' }}>{t('settings.storeMissing')}</span>
+                    </>
+                  )}
+                </span>
               </div>
               <div className="set-row">
                 <span className="panel-label">{t('settings.pathSource')}</span>
                 <span className="set-value">{health?.paths.dataDirSource}</span>
+              </div>
+              <div className="set-row">
+                <span className="panel-label">{t('settings.autoRefresh')}</span>
+                <span className="set-value">{autoRefresh}</span>
               </div>
               <div className="set-row">
                 <span className="panel-label">{t('settings.notesFolder')}</span>

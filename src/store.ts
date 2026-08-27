@@ -171,6 +171,11 @@ class Store {
           run: () => this.set({ settingsOpen: true }),
         })
       }
+      // The server keeps its state in memory, so a store that has gone missing under it
+      // reads as a perfectly ordinary session until the first write lands somewhere new.
+      if (!health.sync.dataDirPresent) {
+        this.toast(t('toast.storeMissing', { dir: health.paths.dataDir }), 'warn')
+      }
       this.connectEvents()
     } catch (err) {
       this.set({ ready: true, error: (err as Error).message })

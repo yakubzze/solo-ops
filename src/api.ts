@@ -40,6 +40,12 @@ export interface HealthInfo {
     obsidianVault: string | null
     notesConnected: boolean
   }
+  sync: {
+    dataDirPresent: boolean
+    watching: string[]
+    pollMs: number
+    lastPollAt: string | null
+  }
   notes: {
     connected: boolean
     dir: string | null

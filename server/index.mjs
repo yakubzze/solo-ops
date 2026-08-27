@@ -139,7 +139,16 @@ function directoryId(dir) {
 function armWatchers() {
   for (const dir of [DATA_DIR, ISSUES_DIR]) {
     const id = directoryId(dir)
-    if (id === null) continue
+    if (id === null) {
+      // Gone for the moment — a synced folder part-way through a rename. Drop the handle:
+      // it is watching nothing, and leaving it in the map reports auto-refresh as healthy.
+      const orphan = watchers.get(dir)
+      if (orphan) {
+        orphan.watcher.close()
+        watchers.delete(dir)
+      }
+      continue
+    }
 
     const live = watchers.get(dir)
     // A watcher follows the directory it was given, not the path. When a sync client
@@ -181,6 +190,20 @@ function startWatcher() {
   if (WATCH_POLL_MS > 0) setInterval(poll, WATCH_POLL_MS).unref()
 }
 
+/**
+ * Auto-refresh that has stopped looks exactly like nothing having changed, which is the
+ * worst way for it to fail: the list reads as current and is not. Report its state rather
+ * than let the interface assume it.
+ */
+function syncStatus() {
+  return {
+    dataDirPresent: existsSync(DATA_DIR),
+    watching: [...watchers.keys()],
+    pollMs: WATCH_POLL_MS,
+    lastPollAt,
+  }
+}
+
 /* ----------------------------------------------------------------------- API */
 
 const routes = {
@@ -188,6 +211,7 @@ const routes = {
     ok: true,
     dev: DEV,
     paths: describePaths(),
+    sync: syncStatus(),
     notes: notes.notesStatus(),
     conflicts: store.findConflictArtifacts(),
   }),
